@@ -3,128 +3,252 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pencari Nomor Belakang</title>
+<title>Pencari Nomor</title>
 <style>
   :root{
-    --bg:#0f1115; --panel:#171a21; --line:#252a35;
-    --txt:#e6e9ef; --dim:#8b93a7; --acc:#4f8cff; --hit:#ffd166;
-    --exact:#ff9f43;
+    --bg:#0a0d12; --card:rgba(22,26,34,.9); --card-hi:rgba(30,36,48,.95);
+    --line:rgba(255,255,255,.07); --line-hi:rgba(255,255,255,.14);
+    --txt:#e8ebf1; --dim:#8b93a7; --dim-2:#5a6376;
+    --acc:#4f8cff; --acc-2:#7ba7ff; --hit:#ffd166;
+    --exact:#ff9f43; --ok:#3ddc84;
+    --ff-mono:"JetBrains Mono",ui-monospace,"SF Mono",Consolas,monospace;
   }
   *{box-sizing:border-box}
+  html,body{height:100%}
   body{
-    margin:0; min-height:100vh; color:var(--txt);
-    background:radial-gradient(1200px 600px at 50% -10%, #1b2333, #0f1115 60%);
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    padding:26px 16px 80px; display:flex; justify-content:center;
+    margin:0; color:var(--txt); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:
+      radial-gradient(ellipse 80% 55% at 50% -10%, rgba(79,140,255,.14), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 85% 105%, rgba(255,159,67,.07), transparent 60%),
+      var(--bg);
+    padding:32px 16px 100px; display:flex; justify-content:center;
+    -webkit-font-smoothing:antialiased;
   }
-  body.dragging{outline:3px dashed var(--acc); outline-offset:-16px}
-  .app{width:100%; max-width:760px}
-  h1{font-size:21px; margin:0 0 6px}
-  .sub{color:var(--dim); font-size:13px; margin:0 0 18px; line-height:1.6}
-  .sub code{background:#1e2430; padding:1px 6px; border-radius:5px; color:#b9c4d8}
+  body.dragging{outline:2.5px dashed var(--acc); outline-offset:-14px}
+  .app{width:100%; max-width:780px}
 
-  .tabs{display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px}
+  /* Header */
+  header{margin-bottom:22px}
+  h1{
+    font-size:22px; margin:0 0 4px; letter-spacing:-.3px;
+    background:linear-gradient(135deg,#fff 30%,var(--acc-2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    font-weight:700; display:inline-flex; align-items:center; gap:8px;
+  }
+  .sub{color:var(--dim); font-size:12.5px; line-height:1.65; margin:0}
+  .sub code{
+    background:rgba(79,140,255,.1); color:#a8c4ff; padding:1px 6px;
+    border-radius:5px; font-family:var(--ff-mono); font-size:11.5px;
+  }
+
+  /* Tabs */
+  .tabs{
+    display:flex; gap:8px; margin-bottom:16px;
+    overflow-x:auto; padding-bottom:6px;
+    scrollbar-width:thin; scrollbar-color:var(--line) transparent;
+  }
+  .tabs::-webkit-scrollbar{height:4px}
+  .tabs::-webkit-scrollbar-thumb{background:var(--line); border-radius:2px}
   .tab{
-    flex:0 0 auto; min-width:110px; text-align:left; cursor:pointer;
-    background:var(--panel); border:1px solid var(--line); border-radius:11px;
-    padding:9px 12px; color:var(--dim); font-size:12.5px;
-    transition:.15s; display:flex; flex-direction:column; gap:2px;
+    flex:0 0 auto; min-width:120px; cursor:pointer; text-align:left;
+    background:var(--card); border:1px solid var(--line); border-radius:13px;
+    padding:11px 14px; color:var(--dim); font-size:12.5px;
+    transition:all .22s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column; gap:4px;
+    position:relative; overflow:hidden;
   }
-  .tab:hover{border-color:#38415a; color:var(--txt)}
-  .tab.active{border-color:var(--acc); background:#182234; color:var(--txt)}
-  .tab-name{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .tab-count{font-size:11px; color:#66708a; font-variant-numeric:tabular-nums}
-  .tab.active .tab-count{color:#8fa8d6}
+  .tab:hover{
+    border-color:var(--line-hi); color:var(--txt);
+    transform:translateY(-1px);
+    box-shadow:0 4px 14px rgba(0,0,0,.25);
+  }
+  .tab.active{
+    border-color:rgba(79,140,255,.5);
+    background:linear-gradient(135deg,rgba(79,140,255,.16),rgba(79,140,255,.06));
+    color:var(--txt);
+    box-shadow:0 0 0 1px rgba(79,140,255,.15), 0 6px 18px rgba(79,140,255,.14);
+  }
+  .tab.active::after{
+    content:''; position:absolute; bottom:0; left:14px; right:14px;
+    height:2px; background:linear-gradient(90deg,transparent,var(--acc),transparent);
+    border-radius:2px;
+  }
+  .tab-name{
+    font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    display:flex; align-items:center; gap:6px; font-size:13px;
+  }
+  .tab-flag{font-size:15px; line-height:1}
+  .tab-count{
+    font-size:11px; color:var(--dim-2); font-variant-numeric:tabular-nums;
+    font-family:var(--ff-mono);
+  }
+  .tab.active .tab-count{color:var(--acc-2)}
 
-  .search{position:relative; margin-bottom:12px}
+  /* Search */
+  .search{position:relative; margin-bottom:14px}
   .search input{
-    width:100%; padding:16px 96px 16px 18px; font-size:19px;
-    font-family:ui-monospace,Consolas,monospace; letter-spacing:1.5px;
-    color:var(--txt); background:var(--panel); border:1.5px solid var(--line);
-    border-radius:14px; outline:none; transition:.15s;
+    width:100%; padding:17px 20px 17px 46px; font-size:18px;
+    font-family:var(--ff-mono); letter-spacing:1.2px;
+    color:var(--txt); background:var(--card); border:1.5px solid var(--line);
+    border-radius:15px; outline:none;
+    transition:border-color .2s, box-shadow .2s, background .2s;
   }
-  .search input:focus{border-color:var(--acc); box-shadow:0 0 0 4px rgba(79,140,255,.15)}
-  .search input::placeholder{color:#525b6e; letter-spacing:1px}
+  .search input:focus{
+    border-color:var(--acc); background:var(--card-hi);
+    box-shadow:0 0 0 4px rgba(79,140,255,.14), 0 8px 24px rgba(0,0,0,.25);
+  }
+  .search input::placeholder{color:var(--dim-2); letter-spacing:.8px; font-weight:400}
+  .search-icon{
+    position:absolute; left:16px; top:50%; transform:translateY(-50%);
+    color:var(--dim-2); pointer-events:none; font-size:15px;
+  }
   .search-actions{
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    position:absolute; right:12px; top:50%; transform:translateY(-50%);
     display:flex; gap:6px;
   }
   .icon-btn{
-    width:32px; height:32px; border-radius:9px; border:0; cursor:pointer;
-    background:#222836; color:var(--dim); font-size:14px;
+    width:34px; height:34px; border-radius:10px; border:0; cursor:pointer;
+    background:rgba(255,255,255,.05); color:var(--dim); font-size:14px;
     display:flex; align-items:center; justify-content:center;
+    transition:all .15s;
   }
-  .icon-btn:hover{background:#2c3446; color:#fff}
+  .icon-btn:hover{background:rgba(255,255,255,.1); color:#fff; transform:scale(1.05)}
+  .icon-btn:active{transform:scale(.95)}
   #clear{display:none}
 
-  #status{font-size:12.5px; color:var(--dim); margin-bottom:12px; min-height:16px}
+  /* Status */
+  #status{
+    font-size:12px; color:var(--dim); margin-bottom:12px;
+    min-height:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  #status .badge{
+    background:rgba(79,140,255,.12); color:var(--acc-2);
+    padding:2px 8px; border-radius:6px; font-size:11px;
+    font-family:var(--ff-mono); letter-spacing:.3px;
+  }
   #status.warn{color:#ffb454}
-  #count{font-size:13.5px; margin:0 0 10px; min-height:18px}
-  .dim{color:var(--dim)}
+  #count{font-size:13px; margin:0 0 12px; min-height:18px; color:var(--dim)}
+  #count b{color:var(--hit); font-weight:600}
+  .dim{color:var(--dim-2)}
 
+  /* Section labels */
   .section-label{
-    font-size:11px; text-transform:uppercase; letter-spacing:1px;
-    color:var(--dim); margin:16px 0 8px; padding-left:2px;
+    font-size:10.5px; text-transform:uppercase; letter-spacing:1.2px;
+    color:var(--dim-2); margin:18px 2px 8px; font-weight:600;
+    display:flex; align-items:center; gap:6px;
   }
   .section-label:first-child{margin-top:0}
+  .section-label .dot{
+    width:6px; height:6px; border-radius:50%; background:var(--dim-2);
+  }
+  .section-label.exact .dot{background:var(--exact)}
+  .section-label.suffix .dot{background:var(--hit)}
 
+  /* Results */
   #results{display:flex; flex-direction:column; gap:6px}
   .row{
-    display:flex; align-items:center; gap:10px; cursor:pointer;
-    background:var(--panel); border:1px solid var(--line); border-radius:10px;
-    padding:11px 14px; transition:.1s;
-    content-visibility:auto; contain-intrinsic-size:0 46px;
+    display:flex; align-items:center; gap:12px; cursor:pointer;
+    background:var(--card); border:1px solid var(--line); border-radius:11px;
+    padding:12px 15px; transition:all .15s cubic-bezier(.4,0,.2,1);
+    content-visibility:auto; contain-intrinsic-size:0 48px;
+    position:relative;
   }
-  .row:hover{border-color:#38415a; background:#1b1f29; transform:translateX(2px)}
+  .row:hover{
+    border-color:var(--line-hi); background:var(--card-hi);
+    transform:translateX(2px);
+    box-shadow:0 4px 16px rgba(0,0,0,.2);
+  }
+  .row:active{transform:translateX(1px) scale(.998)}
   .row.exact{
-    border-color:var(--exact);
-    background:linear-gradient(90deg, rgba(255,159,67,.09), var(--panel) 40%);
+    border-color:rgba(255,159,67,.35);
+    background:linear-gradient(90deg,rgba(255,159,67,.1),var(--card) 45%);
+  }
+  .row.exact:hover{
+    border-color:rgba(255,159,67,.6);
+    background:linear-gradient(90deg,rgba(255,159,67,.16),var(--card-hi) 45%);
   }
   .seq{
-    font-size:11px; color:#525b6e; min-width:42px; text-align:right;
-    font-variant-numeric:tabular-nums; font-family:ui-monospace,Consolas,monospace;
+    font-size:11px; color:var(--dim-2); min-width:44px; text-align:right;
+    font-variant-numeric:tabular-nums; font-family:var(--ff-mono);
+    flex:none;
   }
-  .row.exact .seq{color:var(--exact); font-weight:600}
+  .row.exact .seq{color:var(--exact); font-weight:700}
   .num{
-    font-family:ui-monospace,Consolas,monospace; font-size:16.5px;
-    letter-spacing:1.2px; word-break:break-all; flex:1;
+    font-family:var(--ff-mono); font-size:16.5px; letter-spacing:.6px;
+    word-break:break-all; flex:1; line-height:1.35;
+    font-variant-numeric:tabular-nums;
   }
-  .num mark{background:transparent; color:var(--hit); font-weight:700; text-shadow:0 0 14px rgba(255,209,102,.45)}
-  .copy{font-size:10.5px; color:#525b6e; opacity:0; transition:.1s; flex:none; text-transform:uppercase; letter-spacing:.5px}
+  .num mark{
+    background:transparent; color:var(--hit); font-weight:700;
+    text-shadow:0 0 16px rgba(255,209,102,.5);
+  }
+  .badge-exact{
+    font-size:9px; background:var(--exact); color:#1a1005; font-weight:800;
+    padding:3px 7px; border-radius:5px; letter-spacing:.6px; flex:none;
+  }
+  .copy{
+    font-size:10.5px; color:var(--dim-2); opacity:0;
+    transition:opacity .15s; flex:none; text-transform:uppercase;
+    letter-spacing:.6px; font-weight:600;
+  }
   .row:hover .copy{opacity:1}
-  .badge{
-    font-size:9px; background:var(--exact); color:#1a1005; font-weight:700;
-    padding:2px 6px; border-radius:4px; letter-spacing:.5px; flex:none;
+
+  .empty{
+    color:var(--dim); font-size:14px; padding:36px 20px; text-align:center;
+    line-height:1.7;
+  }
+  .empty-icon{font-size:32px; display:block; margin-bottom:8px; opacity:.6}
+  .empty b{color:#d6dcea}
+
+  .more-btn{
+    margin-top:8px; padding:14px; text-align:center; cursor:pointer;
+    border:1px dashed var(--line-hi); border-radius:11px;
+    color:var(--dim); font-size:12.5px;
+    transition:all .15s;
+  }
+  .more-btn:hover{
+    border-color:var(--acc); color:var(--acc-2);
+    background:rgba(79,140,255,.05);
   }
 
-  .empty{color:var(--dim); font-size:14px; padding:22px 4px; text-align:center}
-  .empty b{color:#d6dcea}
-  #file{display:none}
+  /* Footer */
+  .footer{
+    margin-top:32px; text-align:center; font-size:11.5px;
+    color:var(--dim-2); font-family:var(--ff-mono);
+    letter-spacing:.3px;
+  }
 
+  #file{display:none}
   #toast{
-    position:fixed; left:50%; bottom:26px; transform:translate(-50%,20px);
-    background:#1f2735; border:1px solid #38415a; color:#e6e9ef;
-    padding:10px 18px; border-radius:10px; font-size:13px; opacity:0;
-    pointer-events:none; transition:.2s; max-width:80vw; text-align:center;
-    box-shadow:0 10px 30px rgba(0,0,0,.4);
+    position:fixed; left:50%; bottom:30px; transform:translate(-50%,20px);
+    background:#1f2735; border:1px solid rgba(79,140,255,.3);
+    color:#e8ebf1; padding:11px 20px; border-radius:11px;
+    font-size:13px; opacity:0; pointer-events:none;
+    transition:all .22s cubic-bezier(.4,0,.2,1);
+    max-width:85vw; text-align:center;
+    box-shadow:0 12px 32px rgba(0,0,0,.4), 0 0 0 1px rgba(79,140,255,.1);
+    display:flex; align-items:center; gap:8px;
   }
   #toast.show{opacity:1; transform:translate(-50%,0)}
+  #toast .ok{color:var(--ok); font-weight:700}
 </style>
 </head>
 <body>
 <div class="app">
-  <h1>🔎 Pencari Nomor</h1>
-  <p class="sub">
-    Cari berdasarkan <b>akhiran</b> nomor, atau <b>nomor urut</b>.
-    Contoh: <code>7732</code> · <code>ALI7732</code> · <code>1</code> · <code>#11</code>
-  </p>
+  <header>
+    <h1>🔎 Pencari Nomor</h1>
+    <p class="sub">
+      Cari by akhiran · nomor urut · <code>7732</code> <code>#11</code> <code>ALI7732</code>
+    </p>
+  </header>
 
   <div class="tabs" id="tabs"></div>
 
   <div class="search">
-    <input id="q" type="text" placeholder="7732 / #1 / ALI7732" autocomplete="off" spellcheck="false" autofocus>
+    <span class="search-icon">⌕</span>
+    <input id="q" type="text" placeholder="7732 / #11 / ALI7732" autocomplete="off" spellcheck="false" autofocus>
     <div class="search-actions">
-      <button class="icon-btn" id="reload" title="Muat ulang data">↻</button>
+      <button class="icon-btn" id="reload" title="Muat ulang semua data">↻</button>
       <button class="icon-btn" id="clear" title="Bersihkan">✕</button>
     </div>
   </div>
@@ -132,17 +256,67 @@
   <div id="status"></div>
   <div id="count"></div>
   <div id="results"></div>
+
+  <div class="footer" id="footerInfo"></div>
 </div>
 
 <input type="file" id="file" accept=".txt,text/plain">
 <div id="toast"></div>
 
 <script>
+// ============ COUNTRY CODES ============
+// code -> [flag emoji, nama negara]
+const COUNTRIES = {
+  '1':['🇺🇸','USA/Kanada'], '7':['🇷🇺','Rusia'], '20':['🇪🇬','Mesir'],
+  '27':['🇿🇦','Afrika Selatan'], '30':['🇬🇷','Yunani'], '31':['🇳🇱','Belanda'],
+  '32':['🇧🇪','Belgia'], '33':['🇫🇷','Prancis'], '34':['🇪🇸','Spanyol'],
+  '36':['🇭🇺','Hungaria'], '39':['🇮🇹','Italia'], '40':['🇷🇴','Rumania'],
+  '41':['🇨🇭','Swiss'], '43':['🇦🇹','Austria'], '44':['🇬🇧','Inggris'],
+  '45':['🇩🇰','Denmark'], '46':['🇸🇪','Swedia'], '47':['🇳🇴','Norwegia'],
+  '48':['🇵🇱','Polandia'], '49':['🇩🇪','Jerman'], '51':['🇵🇪','Peru'],
+  '52':['🇲🇽','Meksiko'], '54':['🇦🇷','Argentina'], '55':['🇧🇷','Brasil'],
+  '56':['🇨🇱','Chili'], '57':['🇨🇴','Kolombia'], '58':['🇻🇪','Venezuela'],
+  '60':['🇲🇾','Malaysia'], '61':['🇦🇺','Australia'], '62':['🇮🇩','Indonesia'],
+  '63':['🇵🇭','Filipina'], '64':['🇳🇿','Selandia Baru'], '65':['🇸🇬','Singapura'],
+  '66':['🇹🇭','Thailand'], '81':['🇯🇵','Jepang'], '82':['🇰🇷','Korea Selatan'],
+  '84':['🇻🇳','Vietnam'], '86':['🇨🇳','China'], '90':['🇹🇷','Turki'],
+  '91':['🇮🇳','India'], '92':['🇵🇰','Pakistan'], '98':['🇮🇷','Iran'],
+  '212':['🇲🇦','Maroko'], '213':['🇩🇿','Aljazair'], '216':['🇹🇳','Tunisia'],
+  '234':['🇳🇬','Nigeria'], '254':['🇰🇪','Kenya'], '255':['🇹🇿','Tanzania'],
+  '351':['🇵🇹','Portugal'], '353':['🇮🇪','Irlandia'], '358':['🇫🇮','Finlandia'],
+  '380':['🇺🇦','Ukraina'], '420':['🇨🇿','Ceko'], '880':['🇧🇩','Bangladesh'],
+  '966':['🇸🇦','Arab Saudi'], '971':['🇦🇪','UEA'], '972':['🇮🇱','Israel'],
+};
+
+function detectCountry(normStr){
+  const s = normStr.replace(/^\+/, '').replace(/^00/, '');
+  for (let len = 3; len >= 1; len--){
+    const code = s.slice(0, len);
+    if (COUNTRIES[code]) return { code, flag: COUNTRIES[code][0], name: COUNTRIES[code][1] };
+  }
+  return null;
+}
+
+function detectFileCountry(rows){
+  const counts = {};
+  for (const r of rows){
+    const d = detectCountry(r.norm);
+    if (d) counts[d.code] = (counts[d.code] || 0) + 1;
+  }
+  let best = null, bestCount = 0;
+  for (const [code, c] of Object.entries(counts)){
+    if (c > bestCount){ bestCount = c; best = code; }
+  }
+  if (!best) return null;
+  const info = COUNTRIES[best];
+  return { code: best, flag: info[0], name: info[1], count: bestCount };
+}
+
 // ============ CONFIG ============
 const AUTO_DETECT_MAX = 99;
 const FETCH_BATCH = 5;
 
-const $ = s => document.querySelector(s);
+const $  = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const DB = {};
 let currentKey = null;
@@ -154,65 +328,88 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 const LS_DATA = k => 'numbdb:data:' + k;
 const LS_LABEL = k => 'numbdb:label:' + k;
 
+// ============ CLEAN COPY ============
+// Buang prefix penanda baris kalo somehow masih kebawa:
+//   "[1] xxx"  "(1) xxx"  "{1} xxx"  "#1 xxx"
+function cleanCopy(s){
+  let out = String(s).trim();
+  out = out.replace(/^[\[\(\{]\s*\d{1,6}\s*[\]\)\}]\s*[:.\-]?\s*/, '');
+  out = out.replace(/^#\s*\d{1,6}\s+/, '');
+  return out.trim();
+}
+
 // ============ PARSING ============
-function parseText(text, defaultLabel) {
+// Format baris yang dikenali:
+//   1. 62883xxx      -> seq 1
+//   1) 62883xxx      -> seq 1
+//   [1] 62883xxx     -> seq 1
+//   [1]. 62883xxx    -> seq 1
+//   62883xxx         -> seq = urutan baris
+function parseText(text, defaultLabel){
   const lines = String(text).split(/\r?\n/);
   let label = defaultLabel;
   let labelSet = false;
   const rows = [];
   let lineIndex = 0;
-  const NUMBERED = /^(\d{1,4})[.)]\s+(.+)$/;
+  const NUMBERED = /^(?:\[\s*(\d{1,6})\s*\]|(\d{1,6})\s*[.)])\s*[:.]?\s*(.+)$/;
 
-  for (const ln of lines) {
+  for (const ln of lines){
     const t = ln.trim();
     if (!t) continue;
-    if (t[0] === '#' || t.startsWith('//')) {
-      if (!labelSet) {
+    if (t[0] === '#' || t.startsWith('//')){
+      if (!labelSet){
         const v = t.replace(/^[#\/\s]+/, '').trim();
-        if (v) { label = v; labelSet = true; }
+        if (v){ label = v; labelSet = true; }
       }
       continue;
     }
     lineIndex++;
     const m = t.match(NUMBERED);
-    if (m) {
-      rows.push({ raw: m[2].trim(), norm: norm(m[2]), seqNum: parseInt(m[1], 10) });
+    let raw, seq;
+    if (m){
+      seq = parseInt(m[1] || m[2], 10);
+      raw = m[3].trim();
     } else {
-      rows.push({ raw: t, norm: norm(t), seqNum: lineIndex });
+      seq = lineIndex;
+      raw = t;
     }
+    // safety: buang sisa prefix kalau ada
+    raw = raw.replace(/^[\[\(\{]\s*\d{1,6}\s*[\]\)\}]\s*[:.\-]?\s*/, '').trim();
+    if (!raw) continue;
+    rows.push({ raw, norm: norm(raw), seqNum: seq });
   }
   return { rows, label };
 }
 
 // ============ FETCH ============
-async function tryFetch(url) {
-  try {
+async function tryFetch(url){
+  try{
     const res = await fetch(url, { cache: 'default' });
     if (!res.ok) return null;
     return await res.text();
   } catch { return null; }
 }
 
-async function detectAndFetch() {
+async function detectAndFetch(){
   const result = [];
-  const firstWave = [tryFetch('data.txt').then(t => ({ url: 'data.txt', text: t }))];
-  for (let i = 1; i <= Math.min(FETCH_BATCH, AUTO_DETECT_MAX); i++) {
-    firstWave.push(tryFetch(`data${i}.txt`).then(t => ({ url: `data${i}.txt`, text: t })));
+  const firstWave = [tryFetch('data.txt').then(t => ({ url:'data.txt', text:t }))];
+  for (let i = 1; i <= Math.min(FETCH_BATCH, AUTO_DETECT_MAX); i++){
+    firstWave.push(tryFetch(`data${i}.txt`).then(t => ({ url:`data${i}.txt`, text:t })));
   }
   const firstResults = await Promise.all(firstWave);
   let anyHit = false;
-  for (const r of firstResults) if (r.text !== null) { result.push(r); anyHit = true; }
+  for (const r of firstResults) if (r.text !== null){ result.push(r); anyHit = true; }
   if (!anyHit) return result;
 
   let base = FETCH_BATCH + 1;
-  while (base <= AUTO_DETECT_MAX) {
+  while (base <= AUTO_DETECT_MAX){
     const batch = [];
-    for (let i = base; i < base + FETCH_BATCH && i <= AUTO_DETECT_MAX; i++) {
-      batch.push(tryFetch(`data${i}.txt`).then(t => ({ url: `data${i}.txt`, text: t })));
+    for (let i = base; i < base + FETCH_BATCH && i <= AUTO_DETECT_MAX; i++){
+      batch.push(tryFetch(`data${i}.txt`).then(t => ({ url:`data${i}.txt`, text:t })));
     }
     const results = await Promise.all(batch);
     let hit = false;
-    for (const r of results) if (r.text !== null) { result.push(r); hit = true; }
+    for (const r of results) if (r.text !== null){ result.push(r); hit = true; }
     if (!hit) break;
     base += FETCH_BATCH;
   }
@@ -220,29 +417,39 @@ async function detectAndFetch() {
 }
 
 // ============ DATA ============
-function setData(key, text, source, saveToLS = false) {
+function setData(key, text, source, saveToLS = false){
   const { rows, label } = parseText(text, key + '.txt');
-  DB[key] = { rows, label, source };
-  if (saveToLS) {
-    try {
+  const country = detectFileCountry(rows);
+  DB[key] = { rows, label, source, country };
+  if (saveToLS){
+    try{
       localStorage.setItem(LS_DATA(key), text);
       localStorage.setItem(LS_LABEL(key), label);
     } catch {}
   }
   updateTabs();
+  updateFooter();
   if (key === currentKey) render();
 }
 
+function tabLabel(d, key){
+  if (d.label && d.label !== (key + '.txt')) return d.label;
+  if (d.country) return d.country.name;
+  return key + '.txt';
+}
+
 // ============ TABS ============
-function updateTabs() {
+function updateTabs(){
   const wrap = $('#tabs');
   const keys = Object.keys(DB);
-  if (keys.length === 0) { wrap.innerHTML = ''; return; }
+  if (keys.length === 0){ wrap.innerHTML = ''; return; }
   wrap.innerHTML = keys.map(k => {
     const d = DB[k];
+    const flag = d.country ? d.country.flag : '🌐';
+    const label = tabLabel(d, k);
     const active = k === currentKey ? ' active' : '';
     return `<button class="tab${active}" data-key="${esc(k)}">
-      <span class="tab-name">${esc(d.label)}</span>
+      <span class="tab-name"><span class="tab-flag">${flag}</span>${esc(label)}</span>
       <span class="tab-count">${d.rows.length.toLocaleString('id-ID')} nomor</span>
     </button>`;
   }).join('');
@@ -258,10 +465,18 @@ $('#tabs').addEventListener('click', e => {
   render();
 });
 
-// ============ SEARCH ============
+function updateFooter(){
+  const keys = Object.keys(DB);
+  if (keys.length === 0){ $('#footerInfo').textContent = ''; return; }
+  const total = keys.reduce((s,k) => s + DB[k].rows.length, 0);
+  $('#footerInfo').textContent =
+    `${keys.length} file · ${total.toLocaleString('id-ID')} nomor total`;
+}
+
+// ============ SEARCH / RENDER ============
 let renderToken = 0;
 
-function render() {
+function render(){
   const token = ++renderToken;
   const qRaw = $('#q').value.trim();
   const out = $('#results');
@@ -271,15 +486,25 @@ function render() {
 
   $('#clear').style.display = qRaw ? 'flex' : 'none';
 
-  if (!data) {
+  if (!data){
     info.textContent = '';
-    out.innerHTML = '<div class="empty">Belum ada data</div>';
+    out.innerHTML = '<div class="empty"><span class="empty-icon">📭</span>Belum ada data</div>';
     status.textContent = '';
     return;
   }
-  status.textContent = `${data.label} · ${data.rows.length.toLocaleString('id-ID')} nomor`;
 
-  if (!qRaw) { info.textContent = ''; out.innerHTML = ''; return; }
+  const flag = data.country ? data.country.flag : '🌐';
+  const countryName = data.country ? data.country.name : null;
+  status.innerHTML =
+    `<span class="badge">${flag} ${esc(countryName || 'Tidak terdeteksi')}</span>` +
+    `<span>${esc(data.label)} · ${data.rows.length.toLocaleString('id-ID')} nomor</span>`;
+  status.classList.remove('warn');
+
+  if (!qRaw){
+    info.textContent = '';
+    out.innerHTML = '';
+    return;
+  }
 
   const indexOnly = qRaw.startsWith('#');
   const qClean = indexOnly ? qRaw.slice(1) : qRaw;
@@ -287,48 +512,42 @@ function render() {
   const q = norm(qClean);
 
   let exact = null;
-  if (isDigits && qClean.length <= 5) {
+  if (isDigits && qClean.length <= 6){
     const n = parseInt(qClean, 10);
     exact = data.rows.find(r => r.seqNum === n) || null;
   }
 
   let suffixHits = [];
-  if (!indexOnly && q.length > 0) {
+  if (!indexOnly && q.length > 0){
     suffixHits = data.rows.filter(r => r !== exact && r.norm.endsWith(q));
   }
 
-  if (!exact && suffixHits.length === 0) {
+  if (!exact && suffixHits.length === 0){
     info.textContent = '';
-    out.innerHTML = `<div class="empty">Tidak ada hasil untuk <b>${esc(qRaw)}</b></div>`;
+    out.innerHTML = `<div class="empty"><span class="empty-icon">🔍</span>Tidak ada hasil untuk <b>${esc(qRaw)}</b></div>`;
     return;
   }
 
-  const t0 = performance.now();
-  const ms = (performance.now() - t0).toFixed(1);
   const htmlParts = [];
 
-  if (exact) {
-    htmlParts.push('<div class="section-label">Nomor urut cocok</div>');
+  if (exact){
+    htmlParts.push('<div class="section-label exact"><span class="dot"></span>Nomor urut cocok</div>');
     htmlParts.push(renderRow(exact, '', true));
   }
 
-  if (suffixHits.length > 0) {
-    const label = exact
-      ? `Akhiran cocok (${suffixHits.length.toLocaleString('id-ID')})`
-      : `Akhiran cocok (${suffixHits.length.toLocaleString('id-ID')}) · ${ms}ms`;
-    htmlParts.push(`<div class="section-label">${label}</div>`);
+  if (suffixHits.length > 0){
+    const suffixLabel = `Akhiran cocok · ${suffixHits.length.toLocaleString('id-ID')} nomor`;
+    htmlParts.push(`<div class="section-label suffix"><span class="dot"></span>${suffixLabel}</div>`);
 
     const CHUNK = 1000;
-    for (let i = 0; i < Math.min(CHUNK, suffixHits.length); i++) {
+    for (let i = 0; i < Math.min(CHUNK, suffixHits.length); i++){
       htmlParts.push(renderRow(suffixHits[i], q, false));
     }
 
-    if (suffixHits.length > CHUNK) {
+    if (suffixHits.length > CHUNK){
       const remaining = suffixHits.length - CHUNK;
       const moreId = 'more_' + token;
-      htmlParts.push(`<div id="${moreId}" class="empty" style="cursor:pointer;padding:14px;border:1px dashed var(--line);border-radius:10px;margin-top:6px">
-        ↓ Tampilkan ${remaining.toLocaleString('id-ID')} nomor lainnya
-      </div>`);
+      htmlParts.push(`<div id="${moreId}" class="more-btn">↓ Tampilkan ${remaining.toLocaleString('id-ID')} nomor lainnya</div>`);
       setTimeout(() => {
         const el = document.getElementById(moreId);
         if (!el) return;
@@ -345,17 +564,18 @@ function render() {
   out.innerHTML = htmlParts.join('');
 }
 
-function renderRow(r, q, isExact) {
+function renderRow(r, q, isExact){
   let display;
-  if (isExact || !q) {
+  if (isExact || !q){
     display = esc(r.raw);
   } else {
     const s = suffixStart(r.raw, q.length);
     display = esc(r.raw.slice(0, s)) + '<mark>' + esc(r.raw.slice(s)) + '</mark>';
   }
   const exactClass = isExact ? ' exact' : '';
-  const badge = isExact ? '<span class="badge">MATCH</span>' : '';
-  return `<div class="row${exactClass}" data-copy="${esc(r.raw)}" title="Klik untuk menyalin">
+  const badge = isExact ? '<span class="badge-exact">MATCH</span>' : '';
+  const copyVal = cleanCopy(r.raw); // pastikan yang disalin cuma nomor
+  return `<div class="row${exactClass}" data-copy="${esc(copyVal)}" title="Klik untuk menyalin">
     <span class="seq">#${r.seqNum}</span>
     <span class="num">${display}</span>
     ${badge}
@@ -363,9 +583,9 @@ function renderRow(r, q, isExact) {
   </div>`;
 }
 
-function suffixStart(str, qLen) {
+function suffixStart(str, qLen){
   let c = 0;
-  for (let i = str.length - 1; i >= 0; i--) {
+  for (let i = str.length - 1; i >= 0; i--){
     if (!/[\s\-_.]/.test(str[i])) c++;
     if (c === qLen) return i;
   }
@@ -376,7 +596,7 @@ function suffixStart(str, qLen) {
 $('#q').addEventListener('input', render);
 $('#clear').addEventListener('click', () => { $('#q').value = ''; $('#q').focus(); render(); });
 $('#q').addEventListener('keydown', e => {
-  if (e.key === 'Escape') { $('#q').value = ''; render(); }
+  if (e.key === 'Escape'){ $('#q').value = ''; render(); }
 });
 
 $('#results').addEventListener('click', e => {
@@ -408,7 +628,7 @@ document.addEventListener('dragenter', e => {
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('dragleave', e => {
   e.preventDefault();
-  if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); }
+  if (--dragDepth <= 0){ dragDepth = 0; document.body.classList.remove('dragging'); }
 });
 document.addEventListener('drop', async e => {
   e.preventDefault();
@@ -419,7 +639,7 @@ document.addEventListener('drop', async e => {
   const text = await f.text();
   const name = f.name.toLowerCase();
   let key = currentKey || 'data';
-  if (name.startsWith('data')) {
+  if (name.startsWith('data')){
     const m = name.match(/^(data\d*)/);
     if (m) key = m[1];
   }
@@ -431,7 +651,7 @@ document.addEventListener('drop', async e => {
 $('#reload').addEventListener('click', async () => {
   if (!confirm('Muat ulang semua data? Cache lokal akan dibersihkan.')) return;
   for (const k of Object.keys(DB)) delete DB[k];
-  for (let i = localStorage.length - 1; i >= 0; i--) {
+  for (let i = localStorage.length - 1; i >= 0; i--){
     const k = localStorage.key(i);
     if (k && k.startsWith('numbdb:')) localStorage.removeItem(k);
   }
@@ -440,21 +660,21 @@ $('#reload').addEventListener('click', async () => {
 });
 
 let toastT;
-function toast(msg) {
+function toast(msg){
   const t = $('#toast');
-  t.textContent = msg;
+  t.innerHTML = `<span class="ok">✓</span> ${esc(msg)}`;
   t.classList.add('show');
   clearTimeout(toastT);
   toastT = setTimeout(() => t.classList.remove('show'), 1600);
 }
 
 // ============ BOOT ============
-async function boot() {
+async function boot(){
   $('#status').textContent = 'Memuat data…';
 
   const fetched = await detectAndFetch();
-  if (fetched.length > 0) {
-    for (const f of fetched) {
+  if (fetched.length > 0){
+    for (const f of fetched){
       setData(f.url.replace(/\.txt$/, ''), f.text, 'network');
     }
     currentKey = 'data' in DB ? 'data' : Object.keys(DB)[0];
@@ -464,24 +684,25 @@ async function boot() {
   }
 
   const cachedKeys = [];
-  for (let i = 0; i < localStorage.length; i++) {
+  for (let i = 0; i < localStorage.length; i++){
     const k = localStorage.key(i);
     if (k && k.startsWith('numbdb:data:')) cachedKeys.push(k.replace('numbdb:data:', ''));
   }
-  if (cachedKeys.length > 0) {
-    for (const k of cachedKeys) {
+  if (cachedKeys.length > 0){
+    for (const k of cachedKeys){
       const text = localStorage.getItem(LS_DATA(k));
       const label = localStorage.getItem(LS_LABEL(k)) || (k + '.txt');
       const { rows } = parseText(text, label);
-      DB[k] = { rows, label, source: 'cache' };
+      DB[k] = { rows, label, source: 'cache', country: detectFileCountry(rows) };
     }
     currentKey = cachedKeys.includes('data') ? 'data' : cachedKeys[0];
     updateTabs();
+    updateFooter();
     render();
     return;
   }
 
-  $('#status').textContent = 'Tidak bisa memuat otomatis. Pilih file data.txt:';
+  $('#status').textContent = 'Tidak bisa memuat otomatis. Pilih data.txt:';
   $('#status').classList.add('warn');
   pendingKey = 'data';
   $('#file').click();
