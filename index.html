@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pencari Nomor Belakang</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --line:#252a35;
+    --txt:#e6e9ef; --dim:#8b93a7; --acc:#4f8cff; --hit:#ffd166;
+    --exact:#ff9f43;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; color:var(--txt);
+    background:radial-gradient(1200px 600px at 50% -10%, #1b2333, #0f1115 60%);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:26px 16px 80px; display:flex; justify-content:center;
+  }
+  body.dragging{outline:3px dashed var(--acc); outline-offset:-16px}
+  .app{width:100%; max-width:760px}
+  h1{font-size:21px; margin:0 0 6px}
+  .sub{color:var(--dim); font-size:13px; margin:0 0 18px; line-height:1.6}
+  .sub code{background:#1e2430; padding:1px 6px; border-radius:5px; color:#b9c4d8}
+
+  .tabs{display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px}
+  .tab{
+    flex:0 0 auto; min-width:110px; text-align:left; cursor:pointer;
+    background:var(--panel); border:1px solid var(--line); border-radius:11px;
+    padding:9px 12px; color:var(--dim); font-size:12.5px;
+    transition:.15s; display:flex; flex-direction:column; gap:2px;
+  }
+  .tab:hover{border-color:#38415a; color:var(--txt)}
+  .tab.active{border-color:var(--acc); background:#182234; color:var(--txt)}
+  .tab-name{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .tab-count{font-size:11px; color:#66708a; font-variant-numeric:tabular-nums}
+  .tab.active .tab-count{color:#8fa8d6}
+
+  .search{position:relative; margin-bottom:12px}
+  .search input{
+    width:100%; padding:16px 96px 16px 18px; font-size:19px;
+    font-family:ui-monospace,Consolas,monospace; letter-spacing:1.5px;
+    color:var(--txt); background:var(--panel); border:1.5px solid var(--line);
+    border-radius:14px; outline:none; transition:.15s;
+  }
+  .search input:focus{border-color:var(--acc); box-shadow:0 0 0 4px rgba(79,140,255,.15)}
+  .search input::placeholder{color:#525b6e; letter-spacing:1px}
+  .search-actions{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    display:flex; gap:6px;
+  }
+  .icon-btn{
+    width:32px; height:32px; border-radius:9px; border:0; cursor:pointer;
+    background:#222836; color:var(--dim); font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{background:#2c3446; color:#fff}
+  #clear{display:none}
+
+  #status{font-size:12.5px; color:var(--dim); margin-bottom:12px; min-height:16px}
+  #status.warn{color:#ffb454}
+  #count{font-size:13.5px; margin:0 0 10px; min-height:18px}
+  .dim{color:var(--dim)}
+
+  .section-label{
+    font-size:11px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--dim); margin:16px 0 8px; padding-left:2px;
+  }
+  .section-label:first-child{margin-top:0}
+
+  #results{display:flex; flex-direction:column; gap:6px}
+  .row{
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:11px 14px; transition:.1s;
+    content-visibility:auto; contain-intrinsic-size:0 46px;
+  }
+  .row:hover{border-color:#38415a; background:#1b1f29; transform:translateX(2px)}
+  .row.exact{
+    border-color:var(--exact);
+    background:linear-gradient(90deg, rgba(255,159,67,.09), var(--panel) 40%);
+  }
+  .seq{
+    font-size:11px; color:#525b6e; min-width:42px; text-align:right;
+    font-variant-numeric:tabular-nums; font-family:ui-monospace,Consolas,monospace;
+  }
+  .row.exact .seq{color:var(--exact); font-weight:600}
+  .num{
+    font-family:ui-monospace,Consolas,monospace; font-size:16.5px;
+    letter-spacing:1.2px; word-break:break-all; flex:1;
+  }
+  .num mark{background:transparent; color:var(--hit); font-weight:700; text-shadow:0 0 14px rgba(255,209,102,.45)}
+  .copy{font-size:10.5px; color:#525b6e; opacity:0; transition:.1s; flex:none; text-transform:uppercase; letter-spacing:.5px}
+  .row:hover .copy{opacity:1}
+  .badge{
+    font-size:9px; background:var(--exact); color:#1a1005; font-weight:700;
+    padding:2px 6px; border-radius:4px; letter-spacing:.5px; flex:none;
+  }
+
+  .empty{color:var(--dim); font-size:14px; padding:22px 4px; text-align:center}
+  .empty b{color:#d6dcea}
+  #file{display:none}
+
+  #toast{
+    position:fixed; left:50%; bottom:26px; transform:translate(-50%,20px);
+    background:#1f2735; border:1px solid #38415a; color:#e6e9ef;
+    padding:10px 18px; border-radius:10px; font-size:13px; opacity:0;
+    pointer-events:none; transition:.2s; max-width:80vw; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+  }
+  #toast.show{opacity:1; transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🔎 Pencari Nomor</h1>
+  <p class="sub">
+    Cari berdasarkan <b>akhiran</b> nomor, atau <b>nomor urut</b>.
+    Contoh: <code>7732</code> · <code>ALI7732</code> · <code>1</code> · <code>#11</code>
+  </p>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="search">
+    <input id="q" type="text" placeholder="7732 / #1 / ALI7732" autocomplete="off" spellcheck="false" autofocus>
+    <div class="search-actions">
+      <button class="icon-btn" id="reload" title="Muat ulang data">↻</button>
+      <button class="icon-btn" id="clear" title="Bersihkan">✕</button>
+    </div>
+  </div>
+
+  <div id="status"></div>
+  <div id="count"></div>
+  <div id="results"></div>
+</div>
+
+<input type="file" id="file" accept=".txt,text/plain">
+<div id="toast"></div>
+
+<script>
+// ============ CONFIG ============
+const AUTO_DETECT_MAX = 99;
+const FETCH_BATCH = 5;
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const DB = {};
+let currentKey = null;
+let pendingKey = null;
+
+const SEP = /[\s\-_.]/g;
+const norm = s => String(s).toUpperCase().replace(SEP, '');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LS_DATA = k => 'numbdb:data:' + k;
+const LS_LABEL = k => 'numbdb:label:' + k;
+
+// ============ PARSING ============
+function parseText(text, defaultLabel) {
+  const lines = String(text).split(/\r?\n/);
+  let label = defaultLabel;
+  let labelSet = false;
+  const rows = [];
+  let lineIndex = 0;
+  const NUMBERED = /^(\d{1,4})[.)]\s+(.+)$/;
+
+  for (const ln of lines) {
+    const t = ln.trim();
+    if (!t) continue;
+    if (t[0] === '#' || t.startsWith('//')) {
+      if (!labelSet) {
+        const v = t.replace(/^[#\/\s]+/, '').trim();
+        if (v) { label = v; labelSet = true; }
+      }
+      continue;
+    }
+    lineIndex++;
+    const m = t.match(NUMBERED);
+    if (m) {
+      rows.push({ raw: m[2].trim(), norm: norm(m[2]), seqNum: parseInt(m[1], 10) });
+    } else {
+      rows.push({ raw: t, norm: norm(t), seqNum: lineIndex });
+    }
+  }
+  return { rows, label };
+}
+
+// ============ FETCH ============
+async function tryFetch(url) {
+  try {
+    const res = await fetch(url, { cache: 'default' });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch { return null; }
+}
+
+async function detectAndFetch() {
+  const result = [];
+  const firstWave = [tryFetch('data.txt').then(t => ({ url: 'data.txt', text: t }))];
+  for (let i = 1; i <= Math.min(FETCH_BATCH, AUTO_DETECT_MAX); i++) {
+    firstWave.push(tryFetch(`data${i}.txt`).then(t => ({ url: `data${i}.txt`, text: t })));
+  }
+  const firstResults = await Promise.all(firstWave);
+  let anyHit = false;
+  for (const r of firstResults) if (r.text !== null) { result.push(r); anyHit = true; }
+  if (!anyHit) return result;
+
+  let base = FETCH_BATCH + 1;
+  while (base <= AUTO_DETECT_MAX) {
+    const batch = [];
+    for (let i = base; i < base + FETCH_BATCH && i <= AUTO_DETECT_MAX; i++) {
+      batch.push(tryFetch(`data${i}.txt`).then(t => ({ url: `data${i}.txt`, text: t })));
+    }
+    const results = await Promise.all(batch);
+    let hit = false;
+    for (const r of results) if (r.text !== null) { result.push(r); hit = true; }
+    if (!hit) break;
+    base += FETCH_BATCH;
+  }
+  return result;
+}
+
+// ============ DATA ============
+function setData(key, text, source, saveToLS = false) {
+  const { rows, label } = parseText(text, key + '.txt');
+  DB[key] = { rows, label, source };
+  if (saveToLS) {
+    try {
+      localStorage.setItem(LS_DATA(key), text);
+      localStorage.setItem(LS_LABEL(key), label);
+    } catch {}
+  }
+  updateTabs();
+  if (key === currentKey) render();
+}
+
+// ============ TABS ============
+function updateTabs() {
+  const wrap = $('#tabs');
+  const keys = Object.keys(DB);
+  if (keys.length === 0) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = keys.map(k => {
+    const d = DB[k];
+    const active = k === currentKey ? ' active' : '';
+    return `<button class="tab${active}" data-key="${esc(k)}">
+      <span class="tab-name">${esc(d.label)}</span>
+      <span class="tab-count">${d.rows.length.toLocaleString('id-ID')} nomor</span>
+    </button>`;
+  }).join('');
+}
+
+$('#tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  const key = tab.dataset.key;
+  if (!DB[key]) return;
+  currentKey = key;
+  updateTabs();
+  render();
+});
+
+// ============ SEARCH ============
+let renderToken = 0;
+
+function render() {
+  const token = ++renderToken;
+  const qRaw = $('#q').value.trim();
+  const out = $('#results');
+  const info = $('#count');
+  const status = $('#status');
+  const data = DB[currentKey];
+
+  $('#clear').style.display = qRaw ? 'flex' : 'none';
+
+  if (!data) {
+    info.textContent = '';
+    out.innerHTML = '<div class="empty">Belum ada data</div>';
+    status.textContent = '';
+    return;
+  }
+  status.textContent = `${data.label} · ${data.rows.length.toLocaleString('id-ID')} nomor`;
+
+  if (!qRaw) { info.textContent = ''; out.innerHTML = ''; return; }
+
+  const indexOnly = qRaw.startsWith('#');
+  const qClean = indexOnly ? qRaw.slice(1) : qRaw;
+  const isDigits = /^\d+$/.test(qClean);
+  const q = norm(qClean);
+
+  let exact = null;
+  if (isDigits && qClean.length <= 5) {
+    const n = parseInt(qClean, 10);
+    exact = data.rows.find(r => r.seqNum === n) || null;
+  }
+
+  let suffixHits = [];
+  if (!indexOnly && q.length > 0) {
+    suffixHits = data.rows.filter(r => r !== exact && r.norm.endsWith(q));
+  }
+
+  if (!exact && suffixHits.length === 0) {
+    info.textContent = '';
+    out.innerHTML = `<div class="empty">Tidak ada hasil untuk <b>${esc(qRaw)}</b></div>`;
+    return;
+  }
+
+  const t0 = performance.now();
+  const ms = (performance.now() - t0).toFixed(1);
+  const htmlParts = [];
+
+  if (exact) {
+    htmlParts.push('<div class="section-label">Nomor urut cocok</div>');
+    htmlParts.push(renderRow(exact, '', true));
+  }
+
+  if (suffixHits.length > 0) {
+    const label = exact
+      ? `Akhiran cocok (${suffixHits.length.toLocaleString('id-ID')})`
+      : `Akhiran cocok (${suffixHits.length.toLocaleString('id-ID')}) · ${ms}ms`;
+    htmlParts.push(`<div class="section-label">${label}</div>`);
+
+    const CHUNK = 1000;
+    for (let i = 0; i < Math.min(CHUNK, suffixHits.length); i++) {
+      htmlParts.push(renderRow(suffixHits[i], q, false));
+    }
+
+    if (suffixHits.length > CHUNK) {
+      const remaining = suffixHits.length - CHUNK;
+      const moreId = 'more_' + token;
+      htmlParts.push(`<div id="${moreId}" class="empty" style="cursor:pointer;padding:14px;border:1px dashed var(--line);border-radius:10px;margin-top:6px">
+        ↓ Tampilkan ${remaining.toLocaleString('id-ID')} nomor lainnya
+      </div>`);
+      setTimeout(() => {
+        const el = document.getElementById(moreId);
+        if (!el) return;
+        el.addEventListener('click', () => {
+          el.remove();
+          out.insertAdjacentHTML('beforeend',
+            suffixHits.slice(CHUNK).map(r => renderRow(r, q, false)).join(''));
+        }, { once: true });
+      }, 0);
+    }
+  }
+
+  info.textContent = '';
+  out.innerHTML = htmlParts.join('');
+}
+
+function renderRow(r, q, isExact) {
+  let display;
+  if (isExact || !q) {
+    display = esc(r.raw);
+  } else {
+    const s = suffixStart(r.raw, q.length);
+    display = esc(r.raw.slice(0, s)) + '<mark>' + esc(r.raw.slice(s)) + '</mark>';
+  }
+  const exactClass = isExact ? ' exact' : '';
+  const badge = isExact ? '<span class="badge">MATCH</span>' : '';
+  return `<div class="row${exactClass}" data-copy="${esc(r.raw)}" title="Klik untuk menyalin">
+    <span class="seq">#${r.seqNum}</span>
+    <span class="num">${display}</span>
+    ${badge}
+    <span class="copy">copy</span>
+  </div>`;
+}
+
+function suffixStart(str, qLen) {
+  let c = 0;
+  for (let i = str.length - 1; i >= 0; i--) {
+    if (!/[\s\-_.]/.test(str[i])) c++;
+    if (c === qLen) return i;
+  }
+  return 0;
+}
+
+// ============ EVENTS ============
+$('#q').addEventListener('input', render);
+$('#clear').addEventListener('click', () => { $('#q').value = ''; $('#q').focus(); render(); });
+$('#q').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { $('#q').value = ''; render(); }
+});
+
+$('#results').addEventListener('click', e => {
+  const row = e.target.closest('.row');
+  if (!row) return;
+  const val = row.dataset.copy;
+  navigator.clipboard?.writeText(val)
+    .then(() => toast('Disalin: ' + val))
+    .catch(() => toast('Gagal menyalin'));
+});
+
+$('#file').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const text = await f.text();
+  const key = pendingKey || 'data';
+  pendingKey = null;
+  $('#file').value = '';
+  currentKey = key;
+  setData(key, text, 'file', true);
+  render();
+});
+
+let dragDepth = 0;
+document.addEventListener('dragenter', e => {
+  e.preventDefault();
+  if (++dragDepth === 1) document.body.classList.add('dragging');
+});
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('dragleave', e => {
+  e.preventDefault();
+  if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); }
+});
+document.addEventListener('drop', async e => {
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging');
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  const text = await f.text();
+  const name = f.name.toLowerCase();
+  let key = currentKey || 'data';
+  if (name.startsWith('data')) {
+    const m = name.match(/^(data\d*)/);
+    if (m) key = m[1];
+  }
+  currentKey = key;
+  setData(key, text, 'file', true);
+  render();
+});
+
+$('#reload').addEventListener('click', async () => {
+  if (!confirm('Muat ulang semua data? Cache lokal akan dibersihkan.')) return;
+  for (const k of Object.keys(DB)) delete DB[k];
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('numbdb:')) localStorage.removeItem(k);
+  }
+  currentKey = null;
+  await boot();
+});
+
+let toastT;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+// ============ BOOT ============
+async function boot() {
+  $('#status').textContent = 'Memuat data…';
+
+  const fetched = await detectAndFetch();
+  if (fetched.length > 0) {
+    for (const f of fetched) {
+      setData(f.url.replace(/\.txt$/, ''), f.text, 'network');
+    }
+    currentKey = 'data' in DB ? 'data' : Object.keys(DB)[0];
+    updateTabs();
+    render();
+    return;
+  }
+
+  const cachedKeys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('numbdb:data:')) cachedKeys.push(k.replace('numbdb:data:', ''));
+  }
+  if (cachedKeys.length > 0) {
+    for (const k of cachedKeys) {
+      const text = localStorage.getItem(LS_DATA(k));
+      const label = localStorage.getItem(LS_LABEL(k)) || (k + '.txt');
+      const { rows } = parseText(text, label);
+      DB[k] = { rows, label, source: 'cache' };
+    }
+    currentKey = cachedKeys.includes('data') ? 'data' : cachedKeys[0];
+    updateTabs();
+    render();
+    return;
+  }
+
+  $('#status').textContent = 'Tidak bisa memuat otomatis. Pilih file data.txt:';
+  $('#status').classList.add('warn');
+  pendingKey = 'data';
+  $('#file').click();
+}
+
+boot();
+</script>
+</body>
+</html>
